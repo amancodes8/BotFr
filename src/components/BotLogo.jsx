@@ -1,6 +1,13 @@
+// ✅ Updated ChatWidget.jsx with Gemini-based Flask backend support
 import React, { useState, useRef, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { FaMicrophone, FaPaperPlane, FaFileUpload, FaCommentDots, FaTimes } from "react-icons/fa";
+import {
+  FaMicrophone,
+  FaPaperPlane,
+  FaFileUpload,
+  FaCommentDots,
+  FaTimes
+} from "react-icons/fa";
 
 function ChatWidget() {
   const [isOpen, setIsOpen] = useState(false);
@@ -12,7 +19,7 @@ function ChatWidget() {
   const chatRef = useRef(null);
   const recognitionRef = useRef(null);
 
-  // Voice recognition setup
+  // 🎙️ Voice recognition setup
   useEffect(() => {
     if ("webkitSpeechRecognition" in window) {
       const recognition = new window.webkitSpeechRecognition();
@@ -25,10 +32,7 @@ function ChatWidget() {
         setInput((prev) => prev + " " + transcript);
       };
 
-      recognition.onend = () => {
-        setIsListening(false);
-      };
-
+      recognition.onend = () => setIsListening(false);
       recognitionRef.current = recognition;
     }
   }, []);
@@ -37,13 +41,13 @@ function ChatWidget() {
     if (!recognitionRef.current) return;
     if (isListening) {
       recognitionRef.current.stop();
-      setIsListening(false);
     } else {
       recognitionRef.current.start();
-      setIsListening(true);
     }
+    setIsListening(!isListening);
   };
 
+  // ✉️ Send message to Gemini-powered Flask backend
   const handleSend = async () => {
     if (input.trim() === "") return;
 
@@ -52,16 +56,20 @@ function ChatWidget() {
     setInput("");
 
     try {
-      const res = await fetch("http://localhost:8000/query", {
+      const res = await fetch("http://localhost:5000/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ query: input })
       });
+
       const data = await res.json();
-      const botReply = { text: data.answer || "Sorry, I couldn't process that.", sender: "bot" };
-      setMessages((prev) => [...prev, botReply]);
+      const botText = data.response || "❌ Sorry, I couldn't understand that.";
+      setMessages((prev) => [...prev, { text: botText, sender: "bot" }]);
     } catch (err) {
-      setMessages((prev) => [...prev, { text: "API Error", sender: "bot" }]);
+      setMessages((prev) => [
+        ...prev,
+        { text: "❌ API Error: Failed to fetch response.", sender: "bot" }
+      ]);
     }
   };
 
@@ -70,13 +78,16 @@ function ChatWidget() {
     if (!file) return;
     const reader = new FileReader();
     reader.onload = () => {
-      const content = reader.result;
-      setMessages((prev) => [...prev, { text: `📄 File "${file.name}" uploaded`, sender: "user" }]);
-      // Optionally send to backend
+      setMessages((prev) => [
+        ...prev,
+        { text: `📄 File "${file.name}" uploaded`, sender: "user" }
+      ]);
+      // You can integrate backend upload here if needed
     };
     reader.readAsText(file);
   };
 
+  // 📜 Auto-scroll to latest message
   useEffect(() => {
     if (chatRef.current) {
       chatRef.current.scrollTop = chatRef.current.scrollHeight;
